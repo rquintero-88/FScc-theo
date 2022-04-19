@@ -1,0 +1,876 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Frankfurt}
+\usepackage{amsmath}
+\usepackage{physics}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{simplewick}
+\usepackage{biblatex}
+\usepackage{bbding}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\renewcommand*{\bibfont}{\tiny}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+\graphicspath{{/home/raulquinteromonsebaiz/Documents/FSCC/PresentationFSCC} }
+
+\usepackage[utf8]{inputenc}
+
+
+\newcommand\makebeamertitle{\frame{\maketitle}}%
+
+\begin{document}
+\title{Fock-Space Coupled Cluster for diagonal sectors}
+\author{Raul QUINTERO}
+\institute{LCPQ}
+\date{2021}
+\makebeamertitle
+
+\begin{frame}
+\frametitle{Objectives}
+\begin{itemize}
+\item Calculate the satellite (or shake-up) transitions with Fock-Space Coupled Cluster (FSCC)
+
+\includegraphics[scale=.2]{stelites.png}
+\item Review the tools used to derive FSCC
+
+\item Generate a methodology to obtain FSCC for diagonal sectors
+
+\item Describe the algorithm to obtain the FSCC equations by using symbolic programming
+\end{itemize}
+\end{frame}
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Second Quantization}
+\begin{footnotesize}
+\begin{itemize}
+\item A single determinant can be represented as follows
+\[ 
+\ket{\Psi_{0}}=\ket{ijk \hdots n}  
+\]
+\item To create or remove one of these particle states we use the following operators
+\begin{align*}
+\hat{i}^{\dagger}|jk \hdots n   \rangle  & =|ijk \hdots n  \rangle 
+&
+\hat{i}|ijk \hdots n   \rangle  & =|jk \hdots n   \rangle 
+\end{align*}
+where $\hat{i}^{\dagger}$ is the creation operator and  $\hat{i}$ is the annihilation operator
+\item We can also represent the same determinant as follows
+\[ 
+ |ijk \hdots n   \rangle  =\hat{i}^{\dagger} \hat{j}^{\dagger} \hat{k}^{\dagger} \hdots \hat{n}^{\dagger}| \quad  \rangle 
+\]
+
+where $| \quad  \rangle $ is the vacuum state that is normalized $ \langle \quad  |\quad  \rangle=1 $
+
+\item When they act on the vacuum state
+
+\[ 
+\hat{i}^{\dagger}| \quad   \rangle  =|i   \rangle , \qquad \hat{i}| \quad   \rangle  =0
+\]
+\item To preserve the anti-symmetry the second quantization operators  anti-commute
+\[
+[\hat{i},\hat{j}]_{+}=0, \quad [\hat{i}^{\dagger},\hat{j}^{\dagger}]_{+}=0, \quad [\hat{i}^{\dagger},\hat{j}]_{+}=\delta_{ij}
+\]
+\end{itemize}
+\end{footnotesize}
+\end{frame}
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Second Quantization: Normal order}
+\begin{scriptsize}
+\begin{itemize}
+\item Operators  can be represented in second quantization,  such as the Hamiltonian
+ \[
+\hat{\mathcal{H}}=\sum_{pq}h_{pq} \hat{p}^{\dagger}\hat{q}+\frac{1}{4}\sum_{pqrs} \langle pq || sr \rangle  \hat{p}^{\dagger}\hat{q}^{\dagger}\hat{r}\hat{s}
+\]
+\item If we want to evaluate an operator we need  to sort all the creation operators to the left and the annihilation to the right. 
+\begin{block}{Example: Compute $\langle j| \hat{p}^{\dagger}\hat{q}| i \rangle $}
+\begin{tiny}
+\[
+ \langle j| \hat{p}^{\dagger}\hat{q}| i \rangle =  \langle \quad|\hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}| \quad \rangle =  \langle \quad| 
+\left( \delta_{jp}- \hat{p}^{\dagger}\hat{j}  \right) 
+\left( \delta_{iq}- \hat{i}^{\dagger}\hat{q} \right) 
+| \quad \rangle =
+\]
+
+\[
+\langle \quad| 
+ \delta_{jp}\delta_{iq}- \delta_{iq}\hat{p}^{\dagger}\hat{j} - 
+  \delta_{jp}\hat{i}^{\dagger} \hat{q}  +\hat{p}^{\dagger}
+\left( \delta_{ij}- \hat{i}^{\dagger}\hat{j} \right)
+  \hat{q}
+| \quad \rangle =
+\]
+\[
+ \langle \quad| 
+ \delta_{jp}\delta_{iq}- \delta_{iq}\hat{p}^{\dagger}\hat{j} - 
+  \delta_{jp}\hat{i}^{\dagger}\hat{q}  +\delta_{ij}\hat{p}^{\dagger}\hat{q}
+ -\hat{p}^{\dagger} \hat{i}^{\dagger}\hat{q}\hat{j}
+| \quad \rangle = \langle \quad| 
+ \delta_{jp}\delta_{iq} | \quad \rangle
+\]
+
+\end{tiny}
+all the remaining second quantization operators give zero with respect the vacuum 
+\end{block}
+\textbf{A normal-ordered  second quantization string has all the creation operators to the left and all the annihilation to the right. 
+When the vacuum is applied the only non-zero term is the fully contracted one.} 
+
+The normal-ordered strings are represented with curly brackets, e.g. $\{ \hat{p}^{\dagger} \hat{i}^{\dagger}\hat{q}\hat{j}\}=\hat{p}^{\dagger} \hat{i}^{\dagger}\hat{q}\hat{j}$
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Second Quantization:Normal Order and Wick theorem}
+\begin{footnotesize}
+In our previous example the way we have evaluated the string by anti-commutation relations:
+\[
+\langle \quad|  \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}| \quad \rangle = \langle \quad| 
+ \delta_{jp}\delta_{iq}- \delta_{iq}\hat{p}^{\dagger}\hat{j} - 
+  \delta_{jp}\hat{i}^{\dagger}\hat{q}  +\delta_{ij}\hat{p}^{\dagger}\hat{q}
+ -\hat{p}^{\dagger} \hat{i}^{\dagger}\hat{q}\hat{j}
+| \quad \rangle = \langle \quad| 
+ \delta_{jp}\delta_{iq} | \quad \rangle
+\]
+
+One simple way to evaluate the operator is by the Wick theorem
+\[
+\langle \quad|  \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}| \quad \rangle =
+\{ 
+\contraction{}{\hat{j}}{}{\hat{p}} 
+\contraction[1ex]{\hat{j}\hat{p}^{\dagger}}{\hat{q}}{}{\hat{i}}
+ \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\}
++
+\{ 
+\contraction[1ex]{\hat{j}\hat{p}^{\dagger}}{\hat{q}}{}{\hat{i}}
+ \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\}
++
+\{ 
+\contraction{}{\hat{j}}{}{\hat{p}} 
+ \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\}
++
+\{ 
+\contraction{}{\hat{j}}{\hat{p}^{\dagger}\hat{q}}{}
+ \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\}
++
+\{
+\hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\}
+\]
+
+\[
+\langle \quad|  \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}| \quad \rangle =
+\{ 
+\contraction{}{\hat{j}}{}{\hat{p}} 
+\contraction[1ex]{\hat{j}\hat{p}^{\dagger}}{\hat{q}}{}{\hat{i}}
+ \hat{j} \hat{p}^{\dagger}\hat{q}\hat{i}^{\dagger}
+\} = \langle \quad| 
+ \delta_{jp}\delta_{iq} | \quad \rangle
+\]
+
+The operation $\contraction{}{\hat{j}}{}{\hat{p}} \hat{j} \hat{p}^{\dagger}$ is called contraction.
+
+
+\textcolor{red}{Even using normal order and Wick theorem, it is difficult to evaluate the same expectation value for a more complicated matrix element  }
+
+\[
+\langle \quad| \hat{i} \hat{j} \hat{k}\hat{p}^{\dagger}\hat{q}\hat{l}^{\dagger}\hat{m}^{\dagger}\hat{n}^{\dagger}| \quad \rangle
+\]
+
+\end{footnotesize}
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Particle Hole Formalism}
+\begin{footnotesize}
+\begin{itemize}
+\item  At this point, it is convenient to move the reference state to the HF level (Fermi vacuum)
+\[ 
+| \Psi_{0}\rangle=|ijk \hdots n   \rangle=|0 \rangle  
+\]
+\item So we can define excited  determinants relative to it: 
+\[ 
+\hat{a}^{\dagger} \hat{i}|0 \rangle=|ajk \hdots n   \rangle = | \Psi_{i}^{a}\rangle , \qquad 
+\hat{a}^{\dagger} \hat{b}^{\dagger}\hat{i} \hat{j}|0 \rangle=|abk \hdots n   \rangle=| \Psi_{ij}^{ab}\rangle , \hdots 
+\]
+the spin orbitals $ijk \hdots $ are hole states and the spin orbitals $abc \hdots $ are particle states.
+\item Using this notation we find that
+
+\[ 
+\hat{i}^{\dagger}|0 \rangle=0  , \qquad  \hat{a}|0 \rangle=0
+\]
+
+\item Using the Wick theorem, the only non zero contractions are:
+\[
+\contraction{}{\hat{a}}{}{\hat{b}} \hat{a} \hat{b}^{\dagger}= \delta_{ab} , \qquad 
+\contraction{}{\hat{i}}{^{\dagger} }{\hat{j}} \hat{i}^{\dagger} \hat{j}= \delta_{ij} 
+\]
+
+\end{itemize}
+\end{footnotesize}
+
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Second Quantization: Excitation operators}
+\begin{footnotesize}
+\begin{itemize}
+\item  We can define the Hamiltonian  in normal order with respect the HF reference determinant 
+\[
+\hat{\mathcal{H}}=\sum_{pq}h_{pq} \hat{p}^{\dagger}\hat{q}+\frac{1}{4}\sum_{pqrs} \langle pq || sr \rangle  \hat{p}^{\dagger}\hat{q}^{\dagger}\hat{r}\hat{s}
+\]
+using the Wick theorem:
+ \[
+\hat{\mathcal{H}}=\sum_{pq}f_{pq} \{ \hat{p}^{\dagger}\hat{q} \}+\frac{1}{4} \sum_{pqrs} \langle pq || sr \rangle  \{ \hat{p}^{\dagger}\hat{q}^{\dagger}\hat{r}\hat{s} \}+ \langle 0 |\hat{\mathcal{H}}|0 \rangle 
+\]
+ \[
+\hat{\mathcal{H}}=\hat{\mathcal{H}}_{N}+ \langle 0 |\hat{\mathcal{H}}|0 \rangle  \implies  \hat{\mathcal{H}}_{N}= \hat{\mathcal{H}} - \langle 0 |\hat{\mathcal{H}}|0 \rangle 
+\]
+
+\item The advantage of using the Hamiltonian in normal order is that \textcolor{blue}{ we can compute a product of strings without moving the indices that belong to the reference}
+\end{itemize}
+
+If we want to compute the matrix element $\langle \Psi_{i}^{a}|\sum_{pq}f_{pq} \{ \hat{p}^{\dagger}\hat{q} \} |\Psi_{j}^{b} \rangle $ :
+
+\[
+ \sum_{pq}f_{pq} \langle 0 | \{ \hat{i}^{\dagger}\hat{a} \} \{ \hat{p}^{\dagger}\hat{q} \}\{ \hat{b}^{\dagger}\hat{j} \}|0 \rangle = f_{ab}- f_{ij}
+\]
+
+
+\end{footnotesize}
+\end{frame}
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Foundations in Coupled Cluster}
+In coupled-cluster  theory, a correlated many-body wave function is formulated as an exponential ansatz of the correlated operators acting in the reference state $| \Psi_{0} \rangle$
+
+\begin{equation}
+    | \Psi_{cc} \rangle = e^{\hat{T}} | \Psi_{0} \rangle
+\end{equation}
+
+By applying the Born-Oppenheimer Hamiltonian $  \hat{H}$ to the coupled-cluster wave function we have
+
+\begin{equation}
+   \hat{\mathcal{H}} e^{\hat{T}} | \Psi_{0} \rangle = E e^{\hat{T}} | \Psi_{0} \rangle 
+\end{equation}
+
+The cluster operator ($\hat{T}$) is the sum of one-body ($\hat{T}_{1}$), two-body ($\hat{T}_{2}$), etc. 
+
+\begin{equation}
+ \hat{T}=\hat{T}_{1}+\hat{T}_{2}+\ldots
+\end{equation}
+
+\textbf{To define the cluster operators we need second quantization!}
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Foundations in Coupled Cluster}
+
+
+The cluster operators expressed in second quantization operators are
+ 
+ \begin{equation}
+ \hat{T}_{1} = \sum_{ia}t^{a}_{i} \{ \hat{a}^{\dagger}\hat{i} \}
+ \end{equation}
+
+
+ \begin{equation}
+ \hat{T}_{2} =\frac{1}{4} \sum_{ijab}t^{ab}_{ij}\{ \hat{a}^{\dagger}\hat{i}\hat{b}^{\dagger}\hat{j} \}
+ \end{equation}
+ 
+etc., where $t^{ab\ldots}_{ij\ldots}$ are the amplitude coefficients, the strings of second quantization are in Normal Order, and  the indexes $\{i,j,k, \ldots  \}$ take in to account the occupied orbitals and  $\{a,b,c, \ldots  \}$ virtual orbitals. 
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Foundations in Coupled Cluster}
+To solve  the Schr\"{o}dinger equation we  use the normal order Hamiltonian in the following way
+
+\begin{equation}
+   \hat{\mathcal{H}}_{N} e^{\hat{T}} | \Psi_{0} \rangle = \Delta E e^{\hat{T}} | \Psi_{0} \rangle 
+\end{equation}
+
+To calculate the energy we need the amplitudes, so we can project the Schr\"{o}dinger equation in the reference and excited determinants 
+
+\begin{equation}
+ \langle \Psi_{0} | e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}} | \Psi_{0} \rangle = \Delta E 
+\end{equation}
+
+\[
+ \langle \Psi^{a}_{i} | e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}} | \Psi_{0} \rangle = 0
+\]
+
+\[
+ \langle \Psi^{ab}_{ij} | e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}} | \Psi_{0} \rangle = 0
+\]
+
+\[
+\vdots
+\]
+\end{frame}
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Similarity Transformed Hamiltonian  in Coupled Cluster}
+
+\begin{footnotesize}
+\begin{itemize}
+\item A more explicit form of the similarity transformed Hamiltonian we can use the Backer-Campbell-Hausdorff expansion.
+
+\[
+e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}}= \hat{\mathcal{H}}_{N} + \left[ \hat{\mathcal{H}}_{N},\hat{T} \right]+\frac{1}{2}\left[ \left[ \hat{\mathcal{H}}_{N},\hat{T} \right],\hat{T} \right] +\frac{1}{3!}\left[\left[ \left[ \hat{\mathcal{H}}_{N},\hat{T} \right],\hat{T} \right] ,\hat{T} \right] 	+ 
+\]
+\begin{equation}
+\frac{1}{4!}\left[\left[\left[ \left[ \hat{\mathcal{H}}_{N},\hat{T} \right],\hat{T} \right] ,\hat{T} \right],\hat{T} \right]
+\end{equation}
+\item Using the Wick theorem together with the fact that all the cluster  or neutral excitation operators commute $\left[ \hat{T}_{m},\hat{T}_{n} \right]=0$, we can rewrite the previous expression: 
+\begin{equation}
+\bar{\mathcal{H}}=e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}}=   \hat{\mathcal{H}} +   \contraction{} { \hat{\mathcal{H}}}{}{ {\hat{T}}} 
+  \hat{\mathcal{H}} \hat{T} + 
+ \frac{1}{2}\contraction{}{ \bar{11}}{}{\bar{1}} 
+    \contraction{} { \bar{11}}{1}{ {\hat{11}}} 
+ \hat{\mathcal{H}} \hat{T} \hat{T}  +
+\frac{1}{3!}  \contraction{}{ \bar{11}}{}{\bar{1}} 
+    \contraction{} { \bar{11}}{1}{ {\hat{11}}} 
+ \contraction{} { \bar{11}}{1}{ {\hat{11}}}
+ \contraction{} { \bar{11}}{1}{ {\hat{111111}}}
+\hat{\mathcal{H}} \hat{T} \hat{T} \hat{T}  +
+\frac{1}{4!}  \contraction{}{ \bar{11}}{}{\bar{1}} 
+    \contraction{} { \bar{11}}{1}{ {\hat{11}}} 
+ \contraction{} { \bar{11}}{1}{ {\hat{11}}}
+ \contraction{} { \bar{11}}{1}{ {\hat{111111}}}
+ \contraction{} { \bar{11}}{1}{ {\hat{111111111}}}
+\hat{\mathcal{H}} \hat{T} \hat{T} \hat{T}  \hat{T} 
+\end{equation}
+\item \textcolor{red}{The terms that are not connected contain partial contractions.}
+Example:
+\[
+\contraction{}{ \bar{11}}{}{\bar{1}} 
+    \contraction{} { \bar{11}}{1}{ {\hat{11}}} 
+ \contraction{} { \bar{11}}{1}{ {\hat{11}}}
+\hat{\mathcal{H}} \hat{T} \hat{T} \textcolor{red}{ \hat{T}} 
+\]
+\end{itemize}
+
+\end{footnotesize}
+
+
+\end{frame}
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Equation of Motion Coupled Cluster (EOM-CC)}
+\begin{footnotesize}
+\begin{itemize}
+\item Obtain the amplitudes of $\hat{T}$ by solving the ground-state coupled-cluster equations
+\item Compute the similarity transformed Hamiltonian $\bar{\mathcal{H}}=e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}}$
+\item The equation-of-motion coupled cluster (EOM-CC)  for the ionization potential (IP-EOM-CC) is the following 
+\[
+\begin{pmatrix}
+      \langle \Psi_{i} | \bar{\mathcal{H}} |\Psi_{k}  \rangle  &    \langle \Psi_{i} | \bar{\mathcal{H}} |\Psi^{c}_{kl} \rangle \\ 
+    \langle \Psi^{a}_{ij} | \bar{\mathcal{H}} | \Psi_{k} \rangle    &  \langle \Psi^{a}_{ij} | \bar{\mathcal{H}} | \Psi^{c}_{kl} \rangle
+\end{pmatrix}
+\begin{pmatrix}
+s_{k}\\
+s_{kl}^{c}
+\end{pmatrix}=(E_{\lambda}-E_{CC})
+\begin{pmatrix}
+ s_{k}\\
+ s_{kl}^{c}
+\end{pmatrix}
+\]
+
+\item The equation-of-motion coupled cluster for the electron affinity (EA-EOM-CC) is the following
+\[
+\begin{pmatrix}
+      \langle \Psi^{a} | \bar{\mathcal{H}} |\Psi^{c}  \rangle  &    \langle \Psi^{a} | \bar{\mathcal{H}} |\Psi^{cd}_{k} \rangle \\ 
+    \langle \Psi^{ab}_{i} | \bar{\mathcal{H}} | \Psi^{c} \rangle    &  \langle \Psi^{ab}_{i} | \bar{\mathcal{H}} | \Psi^{cd}_{k} \rangle
+\end{pmatrix}
+\begin{pmatrix}
+s^{c}\\
+s_{k}^{cd}
+\end{pmatrix}=(E_{\lambda}-E_{CC})
+\begin{pmatrix}
+s_{k}\\
+s_{k}^{cd}
+\end{pmatrix}
+\]
+\item By solving the equations of motion it is possible to obtain the amplitudes of the principal sector IP, \textcolor{blue}{$s_{k}$ and $s_{kl}^{c}$}, and EA,  \textcolor{blue}{$s^{c}$ and $s_{k}^{cd}$}.
+\end{itemize}
+\end{footnotesize}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Fock-Space Coupled Cluster (FSCC)}
+\begin{itemize}
+\item FSCC is a coupled cluster method provides a description of  states obtained by detachment or attachment of one or more electrons.
+
+\item If we have a system of $n$ electrons and $m$  spin orbitals, its Fock space is  as follows
+\end{itemize}
+
+
+\begin{center}
+\begin{tabular}{ c c c c c c  } 
+            &             & $+\bar{e}$ & $+2\bar{e}$ & $\ldots$  & $+m\bar{e}$\\ 
+ 
+            & (0,0)&     (1,0)   &    (2,0)    & $\ldots$  & (m,0)\\ 
+
+ $-\bar{e}$ &     (0,1)    &    (1,1)    &    (2,1)    & $\ldots$  & (m,1) \\ 
+ 
+$-2\bar{e}$ &     (0,2)    &    (1,2)    &   (2,2)    & $\ldots$  & (m,2) \\ 
+ 
+$\vdots$    &   $\vdots$   &   $\vdots$  &  $\vdots$  & $\ddots$  &$\vdots$\\ 
+ 
+$-n\bar{e}$ &  (0,n)       &     (1,n)   &    (2,n)   &  $\ldots$ & (m,n) \\ 
+
+\end{tabular}
+
+
+\footcite{I. Lindgren, Int. J. Quantum Chem. , 33, 1978}
+
+\end{center}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Calculate FSCC using the similarity-transformed equation-of-motion coupled cluster (STEOM-CC)}
+\begin{footnotesize}
+\begin{itemize}
+\item Obtain the amplitudes of $\hat{T}$ by solving Coupled Cluster
+\item Compute the similarity-transformed Hamiltonian $e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}}$
+\item Select an  \textbf{active space}  and solve IP-EOM-CC
+\item Select an \textbf{active space} and solve EA-EOM-CC
+\item Calculate the double similarity transform Hamiltonian $ \{e^{\hat{S}}\}^{-1} e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}} \{e^{\hat{S}}\} $, where 
+\begin{equation}
+\hat{S}= IP-operators + EA-operators
+\end{equation}
+\item Diagonalize $ \{e^{\hat{S}}\}^{-1} e^{-\hat{T}}  \hat{\mathcal{H}}_{N} e^{\hat{T}} \{e^{\hat{S}}\} $ over a basis of singly excited determinants to obtain excitation energies
+\end{itemize}
+\end{footnotesize}
+
+\footcite{M. Nooijen, JCP. , 014, 1996}
+\footcite{M. Nooijen, JCP. , 107, 1997}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{FSCC (FSCC) for diagonals sectors}
+We are interested in sectors of neutral,  $-\bar{e}$ and  $+\bar{e}$
+\begin{center}
+\includegraphics[width=8cm, height=3.80cm]{fscc.png}
+\end{center}
+
+\end{frame}
+
+
+
+
+
+\begin{frame}
+\frametitle{FSCC for Sector (0,1),(1,2), . . .  (Ionized states)}
+\begin{footnotesize}
+To have access to ionization  we need to define operators in second quantization as follows:
+\vspace{3mm}
+
+\includegraphics[width=8cm, height=4.5cm]{h1h2.png}
+
+in this case  $h_{i}$, $h^{a}_{ij}$, etc. are the amplitudes.
+
+In general we can define the one electron  detachment operator 
+
+\[
+\hat{H}=\hat{H}_{1}+\hat{H}_{2}+\hdots
+\]
+\end{footnotesize}
+
+
+\end{frame}
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{FSCC for Sector (1,0),(2,1), . . .  (Electron Attached states)}
+
+\begin{footnotesize}
+To have access to electron attached states  we need to define operators in second quantization as follows:
+\vspace{3mm}
+
+
+\includegraphics[width=8cm, height=4.5cm]{p1p2.png}
+
+in this case  $p^{a}$, $p^{b}_{i}$, etc. are the amplitudes.
+
+In general we can define the one electron  attachment operator 
+
+\[
+\hat{P}=\hat{P}_{1}+\hat{P}_{2}+\hdots
+\]
+\end{footnotesize}
+
+
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{FSCC: commutativity between the operators}
+
+\begin{block}{In general we have that every element in the cluster operator $\hat{T}$  commute with both charge operators}
+\begin{equation}
+\left[ \hat{T}_{m},\hat{H}_{n} \right]=0, \hspace{20mm} \left[ \hat{T}_{m},\hat{P}_{n} \right]=0
+\end{equation}
+\end{block}
+
+
+\begin{block}{charge operators do not commute with each other}
+\begin{equation}
+\left[ \hat{P}_{m},\hat{H}_{n} \right] \neq 0
+\end{equation}
+\end{block}
+
+This implies that we cannot simultaneously use operators of opposite charge.
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{FSCC  for diagonals sectors}
+By the result of the previous commutators we can calculate two diagonal in the Fock Space lines simultaneously, the principal diagonal together with any other 
+\begin{center}
+\includegraphics[width=8cm, height=3.80cm]{fscc.png}
+\end{center}
+
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{FSCC: the exponential operator}
+In this formulation we  have a new exponential cluster operator $\hat{S}$.
+
+
+\begin{center}
+\setlength{\tabcolsep}{10pt} % Default value: 6pt
+\renewcommand{\arraystretch}{1.7}
+\begin{tabular}{ |c|c| } 
+ \hline
+Electron ionization valence -1 & Electron attachment valance +1 \\
+ \hline
+$\hat{S}^{-}=\hat{T}+\hat{H}$ & $\hat{S}^{+}=\hat{T}+\hat{P}$  \\ 
+ $
+\hat{H}= \hat{H}_{1}+\hat{H}_{2}+\hat{H}_{3}+\ldots
+$  & $\hat{P}= \hat{P}_{1}+\hat{P}_{2}+\hat{P}_{3}+\ldots$ \\ 
+ $e^{-\hat{S}^{-}}  \hat{\mathcal{H}}_{N} e^{\hat{S}^{-}}$ & $e^{-\hat{S}^{+}}  \hat{\mathcal{H}}_{N} e^{\hat{S}^{+}}$\\
+ \hline
+\end{tabular}
+\end{center}
+
+\begin{block}{Example: Obtain the similarity transformed Hamiltonian for the sectors (1,1),(0,1) and (1,2)}
+
+\[
+\hat{S}^{-}=\hat{T}_{1}+\hat{H}_{1}+\hat{H}_{2}
+\]
+\[
+e^{-\hat{S}^{-}}  \hat{\mathcal{H}}_{N} e^{\hat{S}^{-}}=e^{-\left(\hat{H}_{1}+\hat{H}_{2} \right)}e^{-\hat{T}_{1}}  \hat{\mathcal{H}}_{N} e^{\hat{T}_{1}}e^{\left(\hat{H}_{1}+\hat{H}_{2} \right)}
+\]
+\end{block}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{FSCC for ionized states}
+
+
+Inserting the new cluster operator $\hat{S}$  in the couple cluster the Schr\"{o}dinger equation
+
+\begin{equation}
+ \hat{\mathcal{H}}_{N} e^{\hat{S}^{-}} | \Psi_{0} \rangle = \Delta E e^{\hat{S}^{-}} | \Psi_{0} \rangle
+\end{equation}
+
+by projecting it in the ionized determinants we have
+
+\[
+ \langle \Psi_{i} | e^{-\hat{S}^{-}}  \hat{\mathcal{H}}_{N}  e^{\hat{S}^{-}}| \Psi_{0} \rangle = 0
+\]
+\[
+ \langle \Psi^{a}_{ij} | e^{-\hat{S}^{-}}  \hat{\mathcal{H}}_{N}  e^{\hat{S}^{-}}| \Psi_{0} \rangle = 0
+\]
+\[
+\vdots
+\]
+It is worth to mention that the expansion of $e^{\hat{S}^{-}} $ is limited to operators that singly ionize the reference determinant.
+
+The only conserved terms in $e^{-\hat{S}^{-}}$ are the ones that can have contractions or partial contraction with the bra
+\end{frame}
+
+
+
+
+
+\begin{frame}
+\frametitle{Algorithm to obtain FSCC equations}
+\begin{footnotesize}
+\begin{algorithmic}
+\Require $\hat{S}^{-}=\{ \hat{T}_{1}, \hat{T}_{2},\ldots ,\hat{H}_{1}, \hat{H}_{2}, \ldots \}$
+\State 1. Expand the exponential: 
+\State $e^{\hat{S}^{-}}=1+\hat{S}^{-}+\frac{(\hat{S}^{-})^{2}}{2!}+\ldots \hspace{2mm} \forall \hspace{3mm} valence= -1 $ 
+\State 2. Generate the $ \{ket\} $ with the Hamiltonian  $ \hat{\mathcal{H}}e^{\hat{S}^{-}}| \Psi_{0} \rangle$	
+\State 3.  $N_{bra} \gets N_{operators}$ and generate 
+\State 
+\[
+\{ Bra \}=  \langle \Psi_{i} |,\langle \Psi^{a}_{ij} |,\ldots,
+\]
+\State 4. Project  $ \hat{\mathcal{H}}e^{\hat{S}^{-}}| \Psi_{0} \rangle$	 in $\{ Bra \}$ to obtain 
+\State 5. Obtain all the matrix elements using the Wick theorem
+\State 6. Generate the disconnected terms by 
+\[
+  \langle \Psi_{i} |e^{-{\hat{S}^{-}}},\langle \Psi^{a}_{ij} |e^{-{\hat{S}^{-}}}
+\]
+\State 7. Categorize the integrals and amplitudes to obtain all the diagrams
+  \State 8. Obtain the amplitude equations for FSCC 
+\end{algorithmic}
+\end{footnotesize}
+
+
+\end{frame}
+
+
+
+
+
+\begin{frame}
+\frametitle{Categorize the integrals : Example}
+\begin{footnotesize}
+\begin{algorithmic}
+\Require 
+\[
+ \langle \Psi^{a}_{ij} | \hat{\mathcal{W}}_{N} \hat{T}_{1}^{2} \hat{H}_{2}  | \Psi_{0} \rangle =\frac{1}{2} \sum_{klm,cd} \langle \Psi^{a}_{ij} | \hat{\mathcal{W}}_{N}\{\hat{c}^{\dagger}\hat{k} \}\{\hat{d}^{\dagger}\hat{lm} \}| \Psi_{0} \rangle t_{k}^{c}h_{lm}^{d}
+\]
+\State 1. From step 5. obtain the matrix elements
+\[
+\scriptscriptstyle
+\{-\delta _{a,c} \delta _{i,k} \langle lm||dj \rangle ,\delta _{a,d} \delta _{i,k}
+  \langle lm||cj \rangle,\delta _{a,c} \delta _{i,l} \langle km||dj \rangle,-\delta _{a,d} \delta
+   _{i,l} \langle km||cj \rangle,\delta _{a,c} \delta _{i,m} \langle kl||dj \rangle,
+\]
+\[
+\scriptscriptstyle
+\delta
+   _{a,d} \delta _{i,m}\langle kl||cj \rangle,\delta _{a,c} \delta _{j,k}
+   \langle lm||di \rangle,-\delta _{a,d} \delta _{j,k} \langle km||ci \rangle,\delta _{i,l}
+   \delta _{j,k} \langle am||cd \rangle,-\delta _{i,m} \delta _{j,k}
+  \langle al||cd \rangle,\delta _{a,c} \delta _{j,l} \langle km||di \rangle,
+\]
+\[
+\scriptscriptstyle
+\delta _{a,d}
+   \delta _{j,l}\langle km||ci \rangle,-\delta _{i,k} \delta _{j,l}
+  \langle am||cd \rangle,\delta _{i,m} \delta _{j,l} \langle ak||cd \rangle,\delta _{a,c}
+   \delta _{j,m} \langle kl||di \rangle,-\delta _{a,d} \delta _{j,m}
+   \langle kl||ci \rangle,\delta _{i,k} \delta _{j,m} \langle al||cd \rangle
+\]
+\[
+\scriptscriptstyle
+,-\delta _{i,l}
+   \delta _{j,m} \langle ak||cd \rangle,-\delta _{a,c} \delta _{i,k}
+  \langle lm||dj \rangle,-\delta _{a,c} \delta _{i,m} \langle kl||dj \rangle,\delta _{i,l}
+   \delta _{j,k} \langle am||cd \rangle,-\delta _{i,k} \delta _{j,l} \langle am||cd \rangle\}
+\]
+\State
+2. Label the indices according to the case either:
+\[
+ \langle OO||VO \rangle \qquad or \qquad \langle VO||VV \rangle 
+\]
+then generate subsets
+\State
+3. Separate them by the indices that appear in the bra $\langle \Psi^{a}_{ij} |$, and look for the lower alphabet dummy indexes
+\[
+\langle kl||cj \rangle,
+  \langle kl||ci \rangle,\langle ak||cd \rangle
+\]
+
+Those integrals are called the vertex diagrams
+\end{algorithmic}
+\end{footnotesize}
+
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{frame}
+\frametitle{Categorize the amplitudes : Example}
+\begin{footnotesize}
+\begin{algorithmic}
+\Require 
+All the Kronecker deltas from step 1
+\State 
+1. Apply the Kronecker deltas to the amplitudes and sort them in the categorize integrals
+\[
+\{-t_{k}^{c} h_{il}^{a} ,t_{k}^{a} h_{il}^{c} ,t_{i}^{c}
+   h_{kl}^{a} ,-2 t_{i}^{a} h_{kl}^{c} ,t_{k}^{c} h_{li}^{a} ,-2
+   t_{k}^{a} h_{li}^{c} \},
+\]
+\[
+\{t_{k}^{c} h_{jl}^{a} ,-t_{k}^{a} h_{jl}^{c},-t_{j}^{c} h_{kl}^{a},t_{j}^{a} h_{kl}^{c},-t_{k}^{c} h_{lj}^{a},t_{k}^{a} h_{lj}^{c}\}
+\]
+\[
+\{-t_{k}^{c} h_{ij}^{d},2 t_{j}^{c} h_{ik}^{d},t_{k}^{c} h_{ji}^{d},-2 t_{i}^{c} h_{jk}^{d},-t_{j}^{c} h_{ki}^{d},t_{i}^{c} h_{kj}^{d}\}
+\]
+\State
+2. Separate them by the indices that appear in the bra $\langle \Psi^{a}_{ij} |$ an permute them until the simplest form:
+\[
+\{-2t_{k}^{c} h_{il}^{a} ,3 t_{k}^{a} h_{il}^{c} ,t_{i}^{c}
+   h_{kl}^{a} ,-2 t_{i}^{a} h_{kl}^{c}   \},
+\]
+\[
+\{2t_{k}^{c} h_{jl}^{a} ,-2t_{k}^{a} h_{jl}^{c},-t_{j}^{c} h_{kl}^{a},t_{j}^{a} h_{kl}^{c} \}
+\]
+\[
+\{-2t_{k}^{c} h_{ij}^{d},3 t_{j}^{c} h_{ik}^{d},-3 t_{i}^{c} h_{jk}^{d}\}
+\]
+\State
+3. Use the permutation operator $P(i,j)$ to factorize and multiply each subset by the corresponding integral
+\[
+P(i,j)\sum \langle kl||cj \rangle t_{k}^{c} h_{il}^{a} ,P(i,j)\sum \langle kl||cj \rangle t_{i}^{c}
+   h_{kl}^{a}, \frac{1}{2}\sum \langle kl||cj \rangle t_{k}^{a}h_{il}^{c}
+\]
+\[
+\frac{1}{2} \sum \langle kl||ci \rangle t_{k}^{a}h_{jl}^{c} ,\sum \langle ak||cd \rangle t_{j}^{c} h_{ik}^{d},\sum \langle ak||cd \rangle t_{i}^{c} h_{jk}^{d}
+\]
+\end{algorithmic}
+\end{footnotesize}
+\end{frame}
+
+
+
+
+
+
+
+
+\end{document}
